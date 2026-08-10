@@ -4,7 +4,7 @@ import {
 } from "recharts";
 import {
   Search, X, ChevronDown, Play, FileText, Users, Eye, Star, Building2, Globe2,
-  ArrowLeft, SlidersHorizontal, Calendar, Footprints, ShieldCheck, User, ClipboardList, Plus, Pencil, Trash2,
+  ArrowLeft, SlidersHorizontal, Calendar, Footprints, ShieldCheck, User, ClipboardList, Plus, Pencil, Trash2, Menu,
 } from "lucide-react";
 
 /* ============================== TOKENS ============================== */
@@ -164,32 +164,30 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingAthlete, setEditingAthlete] = useState(null); // null = novo atleta
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  const persist = useCallback((list) => {
-    setAthletes(list);
-    try {
-      localStorage.setItem("noroeste:athletes", JSON.stringify(list));
-    } catch (e) {
-      // se a gravação falhar, os dados continuam válidos nesta sessão
-    }
-  }, []);
-
-  // Load from persistent storage, seed if empty
+  // Carrega do banco de dados (API) e semeia dados de exemplo se estiver vazio
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("noroeste:athletes");
-      if (raw) {
-        setAthletes(JSON.parse(raw));
-      } else {
-        const seed = makeAthletes();
-        setAthletes(seed);
-        localStorage.setItem("noroeste:athletes", JSON.stringify(seed));
+    (async () => {
+      try {
+        let res = await fetch("/api/athletes");
+        if (!res.ok) throw new Error(`Erro ao carregar (status ${res.status})`);
+        let data = await res.json();
+        if (data.length === 0) {
+          await fetch("/api/seed", { method: "POST" });
+          res = await fetch("/api/athletes");
+          data = await res.json();
+        }
+        setAthletes(data);
+      } catch (e) {
+        setLoadError(e.message);
+        setAthletes([]);
+      } finally {
+        setLoaded(true);
       }
-    } catch (e) {
-      setAthletes(makeAthletes());
-    } finally {
-      setLoaded(true);
-    }
+    })();
   }, []);
 
   const clearFilters = () => setFilters({
@@ -241,29 +239,74 @@ export default function App() {
   const openEditForm = (athlete) => { setEditingAthlete(athlete); setFormOpen(true); };
   const closeForm = () => { setFormOpen(false); setEditingAthlete(null); };
 
-  const saveAthlete = (data) => {
-    const idade = calcAge(data.nascimento);
-    if (editingAthlete) {
-      const updated = athletes.map((a) => a.id === editingAthlete.id ? { ...a, ...data, idade } : a);
-      persist(updated);
-    } else {
-      const nextNum = athletes.reduce((max, a) => {
-        const n = parseInt(a.id.replace("ATL-", ""), 10);
-        return isNaN(n) ? max : Math.max(max, n);
-      }, 0) + 1;
-      const newAthlete = { id: `ATL-${String(nextNum).padStart(3, "0")}`, ...data, idade };
-      persist([newAthlete, ...athletes]);
-      setSelectedId(newAthlete.id);
+  const saveAthlete = async (data) => {
+    setSaving(true);
+    try {
+      if (editingAthlete) {
+        const res = await fetch(`/api/athletes/${editingAthlete.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error("Não foi possível salvar as alterações.");
+        const updated = await res.json();
+        setAthletes((list) => list.map((a) => (a.id === updated.id ? updated : a)));
+      } else {
+        const res = await fetch("/api/athletes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error("Não foi possível adicionar o atleta.");
+        const created = await res.json();
+        setAthletes((list) => [created, ...list]);
+        setSelectedId(created.id);
+      }
+      closeForm();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
     }
-    closeForm();
   };
 
-  const deleteAthlete = (id) => {
-    persist(athletes.filter((a) => a.id !== id));
-    if (selectedId === id) { setSelectedId(null); setPage("database"); }
+  const deleteAthlete = async (id) => {
+    try {
+      const res = await fetch(`/api/athletes/${id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) throw new Error("Não foi possível remover o atleta.");
+      setAthletes((list) => list.filter((a) => a.id !== id));
+      if (selectedId === id) { setSelectedId(null); setPage("database"); }
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
-  if (!loaded || !athletes) {
+  if (!loaded) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center" style={{ backgroundColor: COLORS.mainBg }}>
+        <div className="flex flex-col items-center gap-3">
+          <Shield size={88} />
+          <span style={{ color: COLORS.mutedLight, fontFamily: "Inter, sans-serif" }} className="text-sm">Carregando banco de atletas…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center px-6" style={{ backgroundColor: COLORS.mainBg }}>
+        <div className="flex flex-col items-center gap-3 text-center max-w-md">
+          <Shield size={64} />
+          <span className="font-display text-lg" style={{ color: COLORS.textLight }}>Banco de dados não conectado</span>
+          <span style={{ color: COLORS.mutedLight, fontFamily: "Inter, sans-serif" }} className="text-sm">
+            {loadError}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!athletes) {
     return (
       <div className="w-full h-screen flex items-center justify-center" style={{ backgroundColor: COLORS.mainBg }}>
         <div className="flex flex-col items-center gap-3">
@@ -275,7 +318,7 @@ export default function App() {
   }
 
   return (
-    <div className="w-full min-h-screen flex" style={{ backgroundColor: COLORS.mainBg, fontFamily: "Inter, sans-serif" }}>
+    <div className="w-full min-h-screen flex flex-col md:flex-row" style={{ backgroundColor: COLORS.mainBg, fontFamily: "Inter, sans-serif" }}>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
@@ -285,9 +328,34 @@ export default function App() {
         ::-webkit-scrollbar-thumb { background: #D8D8DB; border-radius: 8px; }
       `}</style>
 
+      {/* ============ MOBILE TOP BAR ============ */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b" style={{ backgroundColor: COLORS.white, borderColor: COLORS.line }}>
+        <div className="flex items-center gap-2.5">
+          <Shield size={32} />
+          <div>
+            <div className="font-display text-[12px] tracking-wide leading-tight" style={{ color: COLORS.ink }}>ESPORTE CLUBE NOROESTE</div>
+            <div className="text-[9px] tracking-wider" style={{ color: COLORS.slate }}>DEPTO. DE MERCADO</div>
+          </div>
+        </div>
+        <button onClick={() => setMobileMenuOpen(true)} className="p-2 rounded-lg border" style={{ borderColor: COLORS.line, color: COLORS.graphite }}>
+          <Menu size={18} />
+        </button>
+      </div>
+
+      {/* Overlay behind mobile drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-40" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} onClick={() => setMobileMenuOpen(false)} />
+      )}
+
       {/* ============ SIDEBAR ============ */}
-      <aside className="w-60 shrink-0 flex flex-col" style={{ backgroundColor: COLORS.white, borderRight: `1px solid ${COLORS.line}` }}>
-        <div className="px-5 py-6 flex flex-col items-center text-center gap-2 border-b" style={{ borderColor: COLORS.line }}>
+      <aside
+        className={`w-64 md:w-60 shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-50 transition-transform duration-200 md:translate-x-0 ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ backgroundColor: COLORS.white, borderRight: `1px solid ${COLORS.line}` }}
+      >
+        <div className="px-5 py-6 flex flex-col items-center text-center gap-2 border-b relative" style={{ borderColor: COLORS.line }}>
+          <button onClick={() => setMobileMenuOpen(false)} className="md:hidden absolute right-3 top-3 p-1" style={{ color: COLORS.slate }}>
+            <X size={18} />
+          </button>
           <Shield size={92} />
           <div>
             <div className="font-display text-[13px] tracking-wide leading-tight" style={{ color: COLORS.ink }}>ESPORTE CLUBE NOROESTE</div>
@@ -295,8 +363,8 @@ export default function App() {
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
-          <SidebarLink icon={<Eye size={16} />} label="VISÃO GERAL" active={page === "overview"} onClick={() => setPage("overview")} />
-          <SidebarLink icon={<Users size={16} />} label="BANCO DE ATLETAS" active={page === "database" || page === "profile"} onClick={() => setPage("database")} />
+          <SidebarLink icon={<Eye size={16} />} label="VISÃO GERAL" active={page === "overview"} onClick={() => { setPage("overview"); setMobileMenuOpen(false); }} />
+          <SidebarLink icon={<Users size={16} />} label="BANCO DE ATLETAS" active={page === "database" || page === "profile"} onClick={() => { setPage("database"); setMobileMenuOpen(false); }} />
         </nav>
         <div className="px-5 py-4 text-[11px] border-t" style={{ borderColor: COLORS.line, color: COLORS.slate }}>
           Categorias de Base · Bauru-SP
@@ -306,14 +374,14 @@ export default function App() {
       {/* ============ MAIN ============ */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="px-8 py-5 border-b flex items-center justify-between" style={{ borderColor: COLORS.borderDark, backgroundColor: COLORS.card }}>
+        <header className="px-4 md:px-8 py-4 md:py-5 border-b flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between" style={{ borderColor: COLORS.borderDark, backgroundColor: COLORS.card }}>
           <div>
-            <div className="text-[11px] tracking-widest font-semibold" style={{ color: COLORS.red }}>ESPORTE CLUBE NOROESTE</div>
-            <h1 className="font-display text-xl leading-tight" style={{ color: COLORS.textLight }}>Departamento de Mercado — Categorias de Base</h1>
+            <div className="hidden md:block text-[11px] tracking-widest font-semibold" style={{ color: COLORS.red }}>ESPORTE CLUBE NOROESTE</div>
+            <h1 className="font-display text-lg md:text-xl leading-tight" style={{ color: COLORS.textLight }}>Departamento de Mercado — Categorias de Base</h1>
             <div className="text-xs mt-0.5" style={{ color: COLORS.mutedLight }}>Banco de Atletas Mapeados</div>
           </div>
           {page !== "overview" && page !== "profile" && (
-            <div className="relative w-72">
+            <div className="relative w-full sm:w-72">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.mutedLight }} />
               <input
                 value={search}
@@ -325,7 +393,7 @@ export default function App() {
             </div>
           )}
           {page === "profile" && (
-            <button onClick={() => setPage("database")} className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border hover:opacity-80" style={{ borderColor: COLORS.borderDark, color: COLORS.textLight }}>
+            <button onClick={() => setPage("database")} className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border hover:opacity-80 self-start" style={{ borderColor: COLORS.borderDark, color: COLORS.textLight }}>
               <ArrowLeft size={15} /> Voltar ao banco
             </button>
           )}
@@ -342,7 +410,7 @@ export default function App() {
         )}
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto px-8 py-6">
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-5 md:py-6">
           {page === "overview" && <Overview data={filtered} onOpen={openProfile} />}
           {page === "database" && (
             <DatabaseTable
@@ -474,7 +542,7 @@ function Overview({ data, onOpen }) {
   return (
     <div className="flex flex-col gap-6">
       {/* KPIs */}
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard label="Atletas mapeados" value={total} icon={<Users size={16} />} />
         <KpiCard label="Monitorados" value={monitorados} icon={<Eye size={16} />} />
         <KpiCard label="Prioridade" value={prioridade} icon={<Star size={16} />} />
@@ -483,7 +551,7 @@ function Overview({ data, onOpen }) {
         <KpiCard label="Nacionalidades" value={nacoes} icon={<Globe2 size={16} />} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartCard title="Atletas por posição">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={byPosition} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -667,10 +735,10 @@ function Profile({ athlete: a, onEdit, onDelete }) {
   const stageIndex = STATUS_ORDER.indexOf(a.status);
   const isDescartado = a.status === "Descartado";
   return (
-    <div className="flex flex-col gap-5 max-w-4xl">
+    <div className="flex flex-col gap-5 max-w-4xl w-full">
       {/* Header banner */}
       <div className="rounded-xl overflow-hidden border" style={{ borderColor: COLORS.borderDark }}>
-        <div className="px-6 py-5 flex items-start justify-between gap-4" style={{ backgroundColor: COLORS.card }}>
+        <div className="px-4 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4" style={{ backgroundColor: COLORS.card }}>
           <div>
             <div className="text-[10px] tracking-widest font-semibold" style={{ color: COLORS.mutedLight }}>{a.id}</div>
             <h2 className="font-display text-2xl mt-0.5" style={{ color: COLORS.textLight }}>{a.nome.toUpperCase()}</h2>
@@ -713,7 +781,7 @@ function Profile({ athlete: a, onEdit, onDelete }) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Dados do atleta */}
         <div className="rounded-xl border p-5" style={{ backgroundColor: COLORS.card, borderColor: COLORS.borderDark }}>
           <div className="text-xs font-semibold tracking-wide mb-2 flex items-center gap-2" style={{ color: COLORS.textLight }}>
@@ -807,18 +875,18 @@ function AthleteFormModal({ athlete, onSave, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={onClose}>
       <form onClick={(e) => e.stopPropagation()} onSubmit={submit}
         className="w-full max-w-2xl max-h-[88vh] overflow-y-auto rounded-xl border"
         style={{ backgroundColor: COLORS.card, borderColor: COLORS.borderDark }}>
-        <div className="px-6 py-4 flex items-center justify-between border-b" style={{ borderColor: COLORS.borderDark }}>
+        <div className="px-4 sm:px-6 py-4 flex items-center justify-between border-b" style={{ borderColor: COLORS.borderDark }}>
           <h3 className="font-display text-lg" style={{ color: COLORS.textLight }}>
             {athlete ? "EDITAR ATLETA" : "ADICIONAR ATLETA"}
           </h3>
           <button type="button" onClick={onClose} style={{ color: COLORS.mutedLight }}><X size={18} /></button>
         </div>
 
-        <div className="p-6 grid grid-cols-2 gap-4 text-sm">
+        <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <Field label="Nome completo">
             <input required value={form.nome} onChange={set("nome")} className="px-3 py-2 rounded-lg border outline-none" style={inputStyle} />
           </Field>
@@ -877,7 +945,7 @@ function AthleteFormModal({ athlete, onSave, onClose }) {
           </div>
         </div>
 
-        <div className="px-6 py-4 flex items-center justify-end gap-3 border-t" style={{ borderColor: COLORS.borderDark }}>
+        <div className="px-4 sm:px-6 py-4 flex items-center justify-end gap-3 border-t" style={{ borderColor: COLORS.borderDark }}>
           <button type="button" onClick={onClose} className="text-sm font-medium px-4 py-2 rounded-lg border" style={{ borderColor: COLORS.borderDark, color: COLORS.textLight }}>
             Cancelar
           </button>
