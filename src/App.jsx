@@ -33,14 +33,13 @@ const POSITION_LABELS = {
   VOL: "Volante", MED: "Médio", MEI: "Meia", EXT: "Extremo", CA: "Centroavante",
 };
 const FEET = ["Direito", "Esquerdo", "Ambidestro"];
-const STATUSES = ["Monitorado", "Prioridade", "Recomendado", "Aprovado", "Descartado"];
-const STATUS_ORDER = ["Monitorado", "Prioridade", "Recomendado", "Aprovado"];
+const STATUSES = ["Monitorado", "Recomendado", "Contratado", "Descartado"];
+const STATUS_ORDER = ["Monitorado", "Recomendado", "Contratado"];
 
 const STATUS_STYLE = {
   "Monitorado":  { bg: "#EEEEF0", fg: COLORS.graphite, dot: "#5B5E68" },
-  "Prioridade":  { bg: COLORS.red, fg: COLORS.white,  dot: COLORS.white },
   "Recomendado": { bg: "#DCEEE1", fg: "#1F6B3D",      dot: "#2E8B57" },
-  "Aprovado":    { bg: "#1F6B3D", fg: COLORS.white,   dot: COLORS.white },
+  "Contratado":  { bg: COLORS.red, fg: COLORS.white,  dot: COLORS.white },
   "Descartado":  { bg: "#F1F1F2", fg: "#A6A8AE",     dot: "#C7C8CD" },
 };
 
@@ -513,9 +512,8 @@ function KpiCard({ label, value, icon }) {
 function Overview({ data, onOpen }) {
   const total = data.length;
   const monitorados = data.filter((a) => a.status === "Monitorado").length;
-  const prioridade = data.filter((a) => a.status === "Prioridade").length;
   const recomendados = data.filter((a) => a.status === "Recomendado").length;
-  const aprovados = data.filter((a) => a.status === "Aprovado").length;
+  const contratados = data.filter((a) => a.status === "Contratado").length;
   const descartados = data.filter((a) => a.status === "Descartado").length;
   const clubes = new Set(data.map((a) => a.clube)).size;
   const nacoes = new Set(data.map((a) => a.nacionalidade)).size;
@@ -531,18 +529,16 @@ function Overview({ data, onOpen }) {
     return nations.map((n) => ({ name: n, value: data.filter((a) => a.nacionalidade === n).length }))
       .sort((a, b) => b.value - a.value);
   }, [data]);
-  const priorityAthletes = data.filter((a) => a.status === "Prioridade").slice(0, 15);
   const recommendedAthletes = data.filter((a) => a.status === "Recomendado").slice(0, 15);
 
   return (
     <div className="flex flex-col gap-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         <KpiCard label="Atletas mapeados" value={total} icon={<Users size={16} />} />
         <KpiCard label="Monitorados" value={monitorados} icon={<Eye size={16} />} />
-        <KpiCard label="Prioridade" value={prioridade} icon={<Star size={16} />} />
-        <KpiCard label="Recomendados" value={recomendados} icon={<ShieldCheck size={16} />} />
-        <KpiCard label="Aprovados" value={aprovados} icon={<ShieldCheck size={16} />} />
+        <KpiCard label="Recomendados" value={recomendados} icon={<ThumbsUp size={16} />} />
+        <KpiCard label="Contratados" value={contratados} icon={<ShieldCheck size={16} />} />
         <KpiCard label="Descartados" value={descartados} icon={<X size={16} />} />
         <KpiCard label="Clubes monitorados" value={clubes} icon={<Building2 size={16} />} />
         <KpiCard label="Nacionalidades" value={nacoes} icon={<Globe2 size={16} />} />
@@ -604,15 +600,7 @@ function Overview({ data, onOpen }) {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Prioridades atuais" icon={<Star size={16} />}>
-          <AthleteMiniList
-            athletes={priorityAthletes}
-            emptyText="Nenhum atleta classificado como prioridade no momento."
-            onOpen={onOpen}
-          />
-        </ChartCard>
-
+      <div className="grid grid-cols-1 gap-4">
         <ChartCard title="Recomendados atuais" icon={<ThumbsUp size={16} />}>
           <AthleteMiniList
             athletes={recommendedAthletes}
