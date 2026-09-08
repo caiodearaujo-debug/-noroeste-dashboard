@@ -2,7 +2,7 @@ import { getPool, ensureTable, wasAlreadySeeded, markSeeded, calcAge } from "../
 
 const POSITIONS = ["GOL", "LD", "LE", "ZAG", "VOL", "MED", "MEI", "EXT", "CA"];
 const FEET = ["Direito", "Esquerdo", "Ambidestro"];
-const STATUSES = ["Monitorado", "Prioridade", "Recomendado", "Aprovado", "Descartado"];
+const STATUSES = ["Monitorado", "Recomendado", "Contratado", "Descartado"];
 const FIRST = ["João", "Pedro", "Lucas", "Gabriel", "Matheus", "Rafael", "Bruno", "Carlos", "Felipe", "André",
   "Thiago", "Diego", "Vitor", "Enzo", "Kaique", "Rian", "Miguel", "Igor", "Renan", "Yago", "Cauã", "Davi"];
 const LAST = ["Silva", "Santos", "Oliveira", "Souza", "Costa", "Pereira", "Almeida", "Ferreira", "Rodrigues",
