@@ -5,6 +5,7 @@ import {
 import {
   Search, X, ChevronDown, Play, FileText, Users, Eye, Star, Building2, Globe2,
   ArrowLeft, SlidersHorizontal, Calendar, Footprints, ShieldCheck, User, ClipboardList, Plus, Pencil, Trash2, Menu,
+  Shirt, Activity, ThumbsUp,
 } from "lucide-react";
 
 /* ============================== TOKENS ============================== */
@@ -548,7 +549,7 @@ function Overview({ data, onOpen }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Atletas por posição">
+        <ChartCard title="Atletas por posição" icon={<Shirt size={16} />}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={byPosition} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke={COLORS.borderDark} />
@@ -560,7 +561,7 @@ function Overview({ data, onOpen }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Atletas por ano de nascimento">
+        <ChartCard title="Atletas por ano de nascimento" icon={<Calendar size={16} />}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={byYear} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke={COLORS.borderDark} />
@@ -572,7 +573,7 @@ function Overview({ data, onOpen }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Atletas por status">
+        <ChartCard title="Atletas por status" icon={<Activity size={16} />}>
           <div className="flex flex-col gap-2.5 pt-1">
             {byStatus.map((s) => {
               const max = Math.max(...byStatus.map((x) => x.value), 1);
@@ -590,7 +591,7 @@ function Overview({ data, onOpen }) {
           </div>
         </ChartCard>
 
-        <ChartCard title="Atletas por nacionalidade">
+        <ChartCard title="Atletas por nacionalidade" icon={<Globe2 size={16} />}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={byNation} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
               <CartesianGrid horizontal={false} stroke={COLORS.borderDark} />
@@ -604,7 +605,7 @@ function Overview({ data, onOpen }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Prioridades atuais">
+        <ChartCard title="Prioridades atuais" icon={<Star size={16} />}>
           <AthleteMiniList
             athletes={priorityAthletes}
             emptyText="Nenhum atleta classificado como prioridade no momento."
@@ -612,7 +613,7 @@ function Overview({ data, onOpen }) {
           />
         </ChartCard>
 
-        <ChartCard title="Recomendados atuais">
+        <ChartCard title="Recomendados atuais" icon={<ThumbsUp size={16} />}>
           <AthleteMiniList
             athletes={recommendedAthletes}
             emptyText="Nenhum atleta classificado como recomendado no momento."
@@ -634,7 +635,7 @@ function AthleteMiniList({ athletes, emptyText, onOpen }) {
         <button key={a.id} onClick={() => onOpen(a.id)} className="flex items-center justify-between py-2 px-1 text-left hover:opacity-80 rounded-lg"
           style={{ borderBottom: i < athletes.length - 1 ? `1px solid ${COLORS.borderDark}` : "none" }}>
           <div>
-            <div className="text-sm font-medium" style={{ color: COLORS.textLight }}>{a.nome}</div>
+            <div className="text-[13px] font-medium" style={{ color: COLORS.textLight }}>{a.nome}</div>
             <div className="text-[11px]" style={{ color: COLORS.mutedLight }}>{POSITION_LABELS[a.posicao]} · {a.clube}</div>
           </div>
           <StatusBadge status={a.status} />
@@ -644,12 +645,16 @@ function AthleteMiniList({ athletes, emptyText, onOpen }) {
   );
 }
 
-function ChartCard({ title, children }) {
+function ChartCard({ title, icon, children }) {
   return (
     <div className="rounded-xl border p-5" style={{ backgroundColor: COLORS.card, borderColor: COLORS.borderDark }}>
-      <div className="text-xs font-semibold tracking-wide mb-3" style={{ color: COLORS.textLight }}>{title.toUpperCase()}</div>
+      <div className="flex items-center gap-2 mb-3">
+        {icon && <span style={{ color: COLORS.red }}>{icon}</span>}
+        <span className="text-sm font-semibold tracking-wide" style={{ color: COLORS.textLight }}>{title.toUpperCase()}</span>
+      </div>
       {children}
     </div>
+
   );
 }
 
