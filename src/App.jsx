@@ -531,6 +531,7 @@ function Overview({ data, onOpen }) {
       .sort((a, b) => b.value - a.value);
   }, [data]);
   const priorityAthletes = data.filter((a) => a.status === "Prioridade").slice(0, 5);
+  const recommendedAthletes = data.filter((a) => a.status === "Recomendado").slice(0, 5);
 
   return (
     <div className="flex flex-col gap-6">
@@ -602,26 +603,43 @@ function Overview({ data, onOpen }) {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartCard title="Prioridades atuais">
-          {priorityAthletes.length === 0 ? (
-            <div className="text-xs py-6 text-center" style={{ color: COLORS.mutedLight }}>Nenhum atleta classificado como prioridade no momento.</div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {priorityAthletes.map((a, i) => (
-                <button key={a.id} onClick={() => onOpen(a.id)} className="flex items-center justify-between py-2 px-1 text-left hover:opacity-80 rounded-lg"
-                  style={{ borderBottom: i < priorityAthletes.length - 1 ? `1px solid ${COLORS.borderDark}` : "none" }}>
-                  <div>
-                    <div className="text-sm font-medium" style={{ color: COLORS.textLight }}>{a.nome}</div>
-                    <div className="text-[11px]" style={{ color: COLORS.mutedLight }}>{POSITION_LABELS[a.posicao]} · {a.clube}</div>
-                  </div>
-                  <StatusBadge status={a.status} />
-                </button>
-              ))}
-            </div>
-          )}
+          <AthleteMiniList
+            athletes={priorityAthletes}
+            emptyText="Nenhum atleta classificado como prioridade no momento."
+            onOpen={onOpen}
+          />
+        </ChartCard>
+
+        <ChartCard title="Recomendados atuais">
+          <AthleteMiniList
+            athletes={recommendedAthletes}
+            emptyText="Nenhum atleta classificado como recomendado no momento."
+            onOpen={onOpen}
+          />
         </ChartCard>
       </div>
+    </div>
+  );
+}
+
+function AthleteMiniList({ athletes, emptyText, onOpen }) {
+  if (athletes.length === 0) {
+    return <div className="text-xs py-6 text-center" style={{ color: COLORS.mutedLight }}>{emptyText}</div>;
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      {athletes.map((a, i) => (
+        <button key={a.id} onClick={() => onOpen(a.id)} className="flex items-center justify-between py-2 px-1 text-left hover:opacity-80 rounded-lg"
+          style={{ borderBottom: i < athletes.length - 1 ? `1px solid ${COLORS.borderDark}` : "none" }}>
+          <div>
+            <div className="text-sm font-medium" style={{ color: COLORS.textLight }}>{a.nome}</div>
+            <div className="text-[11px]" style={{ color: COLORS.mutedLight }}>{POSITION_LABELS[a.posicao]} · {a.clube}</div>
+          </div>
+          <StatusBadge status={a.status} />
+        </button>
+      ))}
     </div>
   );
 }
