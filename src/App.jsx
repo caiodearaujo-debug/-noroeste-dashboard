@@ -32,13 +32,15 @@ const POSITION_LABELS = {
   VOL: "Volante", MED: "Médio", MEI: "Meia", EXT: "Extremo", CA: "Centroavante",
 };
 const FEET = ["Direito", "Esquerdo", "Ambidestro"];
-const STATUSES = ["Monitorado", "Prioridade", "Descartado"];
-const STATUS_ORDER = ["Monitorado", "Prioridade"];
+const STATUSES = ["Monitorado", "Prioridade", "Recomendado", "Aprovado", "Descartado"];
+const STATUS_ORDER = ["Monitorado", "Prioridade", "Recomendado", "Aprovado"];
 
 const STATUS_STYLE = {
-  "Monitorado": { bg: "#EEEEF0", fg: COLORS.graphite, dot: "#5B5E68" },
-  "Prioridade": { bg: COLORS.red, fg: COLORS.white,  dot: COLORS.white },
-  "Descartado": { bg: "#F1F1F2", fg: "#A6A8AE",     dot: "#C7C8CD" },
+  "Monitorado":  { bg: "#EEEEF0", fg: COLORS.graphite, dot: "#5B5E68" },
+  "Prioridade":  { bg: COLORS.red, fg: COLORS.white,  dot: COLORS.white },
+  "Recomendado": { bg: "#DCEEE1", fg: "#1F6B3D",      dot: "#2E8B57" },
+  "Aprovado":    { bg: "#1F6B3D", fg: COLORS.white,   dot: COLORS.white },
+  "Descartado":  { bg: "#F1F1F2", fg: "#A6A8AE",     dot: "#C7C8CD" },
 };
 
 /* ============================== SAMPLE DATA ============================== */
@@ -165,8 +167,10 @@ export default function App() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingAthlete, setEditingAthlete] = useState(null); // null = novo atleta
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+
+
   const [loadError, setLoadError] = useState(null);
-  const [saving, setSaving] = useState(false);
 
   // Carrega do banco de dados (API) e semeia dados de exemplo se estiver vazio
   useEffect(() => {
@@ -240,7 +244,6 @@ export default function App() {
   const closeForm = () => { setFormOpen(false); setEditingAthlete(null); };
 
   const saveAthlete = async (data) => {
-    setSaving(true);
     try {
       if (editingAthlete) {
         const res = await fetch(`/api/athletes/${editingAthlete.id}`, {
@@ -265,8 +268,6 @@ export default function App() {
       closeForm();
     } catch (e) {
       alert(e.message);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -298,23 +299,13 @@ export default function App() {
         <div className="flex flex-col items-center gap-3 text-center max-w-md">
           <Shield size={64} />
           <span className="font-display text-lg" style={{ color: COLORS.textLight }}>Banco de dados não conectado</span>
-          <span style={{ color: COLORS.mutedLight, fontFamily: "Inter, sans-serif" }} className="text-sm">
-            {loadError}
-          </span>
+          <span style={{ color: COLORS.mutedLight, fontFamily: "Inter, sans-serif" }} className="text-sm">{loadError}</span>
         </div>
       </div>
     );
   }
 
   if (!athletes) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center" style={{ backgroundColor: COLORS.mainBg }}>
-        <div className="flex flex-col items-center gap-3">
-          <Shield size={88} />
-          <span style={{ color: COLORS.mutedLight, fontFamily: "Inter, sans-serif" }} className="text-sm">Carregando banco de atletas…</span>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -522,6 +513,8 @@ function Overview({ data, onOpen }) {
   const total = data.length;
   const monitorados = data.filter((a) => a.status === "Monitorado").length;
   const prioridade = data.filter((a) => a.status === "Prioridade").length;
+  const recomendados = data.filter((a) => a.status === "Recomendado").length;
+  const aprovados = data.filter((a) => a.status === "Aprovado").length;
   const descartados = data.filter((a) => a.status === "Descartado").length;
   const clubes = new Set(data.map((a) => a.clube)).size;
   const nacoes = new Set(data.map((a) => a.nacionalidade)).size;
@@ -542,10 +535,12 @@ function Overview({ data, onOpen }) {
   return (
     <div className="flex flex-col gap-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <KpiCard label="Atletas mapeados" value={total} icon={<Users size={16} />} />
         <KpiCard label="Monitorados" value={monitorados} icon={<Eye size={16} />} />
         <KpiCard label="Prioridade" value={prioridade} icon={<Star size={16} />} />
+        <KpiCard label="Recomendados" value={recomendados} icon={<ShieldCheck size={16} />} />
+        <KpiCard label="Aprovados" value={aprovados} icon={<ShieldCheck size={16} />} />
         <KpiCard label="Descartados" value={descartados} icon={<X size={16} />} />
         <KpiCard label="Clubes monitorados" value={clubes} icon={<Building2 size={16} />} />
         <KpiCard label="Nacionalidades" value={nacoes} icon={<Globe2 size={16} />} />

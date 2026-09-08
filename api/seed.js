@@ -1,8 +1,8 @@
-import { getPool, ensureTable, rowToAthlete, calcAge } from "../lib/db.js";
+import { getPool, ensureTable, wasAlreadySeeded, markSeeded, calcAge } from "../lib/db.js";
 
 const POSITIONS = ["GOL", "LD", "LE", "ZAG", "VOL", "MED", "MEI", "EXT", "CA"];
 const FEET = ["Direito", "Esquerdo", "Ambidestro"];
-const STATUSES = ["Monitorado", "Prioridade", "Descartado"];
+const STATUSES = ["Monitorado", "Prioridade", "Recomendado", "Aprovado", "Descartado"];
 const FIRST = ["João", "Pedro", "Lucas", "Gabriel", "Matheus", "Rafael", "Bruno", "Carlos", "Felipe", "André",
   "Thiago", "Diego", "Vitor", "Enzo", "Kaique", "Rian", "Miguel", "Igor", "Renan", "Yago", "Cauã", "Davi"];
 const LAST = ["Silva", "Santos", "Oliveira", "Souza", "Costa", "Pereira", "Almeida", "Ferreira", "Rodrigues",
@@ -69,9 +69,9 @@ export default async function handler(req, res) {
   try {
     await ensureTable();
     const pool = getPool();
-    const { rows: countRows } = await pool.query("SELECT COUNT(*)::int AS n FROM athletes");
-    if (countRows[0].n > 0) {
-      return res.status(200).json({ seeded: false, message: "Tabela já tem dados." });
+    const already = await wasAlreadySeeded();
+    if (already) {
+      return res.status(200).json({ seeded: false, message: "Já foi semeado anteriormente." });
     }
     const seed = makeAthletes();
     for (const a of seed) {
@@ -83,6 +83,7 @@ export default async function handler(req, res) {
           a.status, a.video, a.relatorio, a.observacoes, a.ultimaAnalise, a.analista]
       );
     }
+    await markSeeded();
     return res.status(200).json({ seeded: true, count: seed.length });
   } catch (e) {
     console.error(e);
