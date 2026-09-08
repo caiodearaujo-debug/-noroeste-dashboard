@@ -531,8 +531,8 @@ function Overview({ data, onOpen }) {
     return nations.map((n) => ({ name: n, value: data.filter((a) => a.nacionalidade === n).length }))
       .sort((a, b) => b.value - a.value);
   }, [data]);
-  const priorityAthletes = data.filter((a) => a.status === "Prioridade").slice(0, 5);
-  const recommendedAthletes = data.filter((a) => a.status === "Recomendado").slice(0, 5);
+  const priorityAthletes = data.filter((a) => a.status === "Prioridade").slice(0, 15);
+  const recommendedAthletes = data.filter((a) => a.status === "Recomendado").slice(0, 15);
 
   return (
     <div className="flex flex-col gap-6">
@@ -630,7 +630,7 @@ function AthleteMiniList({ athletes, emptyText, onOpen }) {
     return <div className="text-xs py-6 text-center" style={{ color: COLORS.mutedLight }}>{emptyText}</div>;
   }
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 max-h-96 overflow-y-auto pr-1">
       {athletes.map((a, i) => (
         <button key={a.id} onClick={() => onOpen(a.id)} className="flex items-center justify-between py-2 px-1 text-left hover:opacity-80 rounded-lg"
           style={{ borderBottom: i < athletes.length - 1 ? `1px solid ${COLORS.borderDark}` : "none" }}>
